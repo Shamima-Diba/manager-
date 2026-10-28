@@ -7,26 +7,17 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-apk:
+  build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'yarn'
-
-      - name: Install dependencies
-        run: yarn install
-
-      - name: Build Web Frontend
-        run: |
-          cd apps/web
-          yarn build
 
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
@@ -34,9 +25,19 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Sync Capacitor Android
+      - name: Install Monorepo Dependencies
+        run: yarn install
+
+      - name: Build Web Frontend
         run: |
           cd apps/web
+          yarn build
+
+      - name: Install & Setup Capacitor Android
+        run: |
+          cd apps/web
+          yarn add @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "Banglar Voice 24" "com.banglarvoice24.manager" --web-dir dist || true
           npx cap add android || true
           npx cap sync android
 
