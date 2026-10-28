@@ -1,0 +1,13 @@
+# Licensing and ASSET_GUARD
+
+Application source: MIT (LICENSE). Original geometric PPM artwork and Bengali caption fixture: CC0-1.0 (tests/fixtures/LICENSE). The frontend loads Fontsource Noto Sans Bengali with the dependency package; SIL Open Font License 1.1 is copied under licenses/. Worker distro Noto fonts retain their package's OFL license. No model weights, commercial stock media, music library, celebrity voices, or third-party logo is bundled.
+
+Every render asset has origin, original URL (where applicable), creator, license evidence reference, retrieval timestamp, attribution, commercial-use and modification status, editorial-only flag, consent notes, reviewer decision and checksum. Unknown commercial use or modification rights blocks rendering. This initial gate intentionally blocks editorial-only and noncommercial/no-derivatives assets instead of attempting to infer a compatible scenario. A reviewer must inspect the actual terms and context. An approval is not legal advice or a proof of consent.
+
+Consider identifiable people, sensitive news, privacy/publicity releases, misleading endorsement, trademarks, music composition/recording rights, sublicensing, modifications, and distribution territory. A free download is not a license. No Pexels/Pixabay/Wikimedia acquisition adapter is included; manual uploads work, with rights evidence supplied by the user. Downloading media directly from provider pages is not automatic.
+
+Render metadata contains an attribution/source manifest and checksums. It is persisted with the private render artifact. Standalone manifest download UI is not implemented; operators can read render_jobs.metadata through authenticated workspace access. Do not publish a render until all contractual attribution and consent obligations are independently satisfied. Public media promotion is intentionally absent from this release.
+
+FFmpeg builds using libx264/GPL codecs require review of distribution obligations and applicable codec patents. Worker installs the distribution FFmpeg binary; this ZIP does not bundle that binary. Node/npm dependency licenses are inventoried in dependency-inventory.json and THIRD_PARTY_NOTICES; verify transitives and upstream notices before redistributing binaries. A current advisory audit does not constitute a license audit.
+
+No Remotion is used. n8n and Postiz are not shipped. Customer-facing embedding of future optional orchestration tools must undergo version-specific licensing/brand/hosting review. Ollama software license is distinct from each selected model's weights and usage restrictions. Bengali support is not guaranteed merely because a model loads; see bengali-evaluation.md. No license is granted by deployment alone.

@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+node -e 'if(Number(process.versions.node.split(".")[0])<22)process.exit(1)'
+npm ci
+command -v docker >/dev/null || { echo 'Install Docker before local Supabase'; exit 1; }
+command -v supabase >/dev/null || { echo 'Install Supabase CLI 2.122.0 from official release'; exit 1; }
+supabase start
+supabase db reset
+echo 'Configure .env locally from .env.example; never commit secrets. Then run npm run doctor.'

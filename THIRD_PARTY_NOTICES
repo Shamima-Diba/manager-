@@ -1,0 +1,20 @@
+manager does not replace or relicense third-party components.
+
+React / React DOM: MIT. https://github.com/facebook/react
+Supabase JS / auth-js / storage-js / postgrest-js / realtime-js: MIT. https://github.com/supabase/supabase-js
+Vite, Vitest, plugin-react: MIT. https://github.com/vitejs/vite ; https://github.com/vitest-dev/vitest
+TypeScript: Apache-2.0. https://github.com/microsoft/TypeScript
+node-postgres (pg): MIT. https://github.com/brianc/node-postgres
+Zod: MIT. https://github.com/colinhacks/zod
+tsx: MIT. https://github.com/privatenumber/tsx
+Playwright: Apache-2.0. https://github.com/microsoft/playwright
+Noto Sans Bengali / Fontsource package: SIL Open Font License 1.1. licenses/noto-sans-bengali-OFL.txt
+PostgreSQL: PostgreSQL License, separately installed. https://www.postgresql.org/about/licence/
+pgmq: PostgreSQL License, separately installed. https://github.com/pgmq/pgmq
+Supabase services/CLI: review component licenses and hosting terms separately. https://github.com/supabase/supabase
+FFmpeg: LGPL/GPL depending on build options; libx264-enabled distro builds are GPL-enabled. Not bundled. https://ffmpeg.org/legal.html
+Node container base, Debian packages and Nginx have separate notices/licenses; inspect image distributions.
+Optional Ollama and any downloaded model weights: separate terms, no weights bundled or license assumption.
+Original fixture media: CC0-1.0, tests/fixtures/LICENSE.
+
+Full installed npm dependency/version/license inventory: dependency-inventory.json (generated from lockfile plus actual package metadata). Transitive inventory may include optional platform packages absent on the build host; such entries are marked unknown if upstream metadata cannot be read. Review license compatibility before shipping binary/container distributions. No paid stock assets or copyrighted source article is bundled.

@@ -1,0 +1,15 @@
+# Optional Ollama only. No model weights bundled; review each weight license before pulling.
+services:
+  ollama:
+    image: ollama/ollama:0.12.6
+    profiles: [gpu]
+    volumes: ["ollama-models:/root/.ollama"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+volumes:
+  ollama-models:

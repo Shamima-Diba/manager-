@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+site-output/
+coverage/
+test-results/
+playwright-report/
+*.zip
+*.mp4
+*.log
+supabase/.temp/

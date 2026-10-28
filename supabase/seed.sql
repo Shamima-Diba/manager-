@@ -1,0 +1,2 @@
+-- No hardcoded accounts, passwords, or misleading metrics.
+-- Create an Auth user, confirm email using local Mailpit, then create Banglar Voice 24 in UI.
