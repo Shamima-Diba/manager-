@@ -11,3 +11,5 @@ playwright-report/
 *.mp4
 *.log
 supabase/.temp/
+.vercel
+.env*

@@ -19,6 +19,9 @@
     "package": "python3 scripts/package.py"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
     "@fontsource/noto-sans-bengali": "5.3.0",
     "@supabase/supabase-js": "2.118.0",
     "pg": "8.23.1",
