@@ -150,7 +150,7 @@ begin
     raise exception 'Activating a destination requires a stable target key and at least 20 characters of cutover evidence';
   end if;
   update public.publication_destinations
-    set ownership_mode=p_mode,updated_at=now()
+    set ownership_mode=p_mode,enabled=(p_mode='active'),updated_at=now()
     where id=d.id;
   perform manager_private.audit(d.workspace_id,'publication.destination_ownership_changed',d.id,
     jsonb_build_object('from',d.ownership_mode,'to',p_mode,'evidence',left(coalesce(p_evidence,''),1000)));
