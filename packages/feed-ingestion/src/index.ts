@@ -94,7 +94,7 @@ function parseXml(xml: string): Node {
   if (stack.length !== 1 || root.children.length !== 1) throw Error("Incomplete or multiple-root XML");
   return root.children[0];
 }
-function child(node: Node, name: string): Node | undefined { return node.children.find(n => local(n.name) === name); }
+function child(node: Node, name: string): Node | undefined { return node.children.find(n => local(n.name) === name.toLowerCase()); }
 function text(node: Node | undefined): string { return node ? node.text.trim() : ""; }
 function descendants(node: Node, name: string): Node[] {
   return node.children.filter(n => local(n.name) === name);
