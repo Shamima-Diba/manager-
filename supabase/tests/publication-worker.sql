@@ -58,12 +58,15 @@ select (select status='dispatching' and worker_id='fixture-worker'
   from public.publication_deliveries where id=:'claimed_id'::uuid) as leased \gset
 select pg_temp.ok(:'leased'='t','Worker claim acquires a lease');
 
-set local role manager_worker_api;
+select pg_temp.ok(
+  has_function_privilege('manager_worker_api','manager_private.worker_finish_publication(uuid,uuid,text,text)','EXECUTE')
+  and not has_function_privilege('authenticated','manager_private.worker_finish_publication(uuid,uuid,text,text)','EXECUTE'),
+  'Worker finish RPC is not callable by authenticated browser users'
+);
 select manager_private.worker_finish_publication(
   :'claimed_id'::uuid,:'lease_token'::uuid,'fixture-remote-1',
   'https://mastodon.example/@fixture/1'
 );
-reset role;
 
 select pg_temp.ok((select status='published'
   and remote_id='fixture-remote-1'
