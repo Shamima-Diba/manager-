@@ -1,4 +1,7 @@
 -- Dispatch the new publication ledger through the existing isolated worker.
+-- Global opt-in remains false until an operator completes a separately approved cutover.
+alter table manager_private.system_settings
+  add column publication_dispatch_enabled boolean not null default false;
 -- The first adapter intentionally reuses a workspace's existing Mastodon OAuth connection.
 -- Other provider keys remain non-dispatchable until their own OAuth/receipt adapters exist.
 alter table public.publication_deliveries
@@ -57,6 +60,7 @@ begin
     and x.enabled and x.ownership_mode='active'
     and not w.publishing_paused
     and not ss.publishing_killed
+    and ss.publication_dispatch_enabled
   order by pd.scheduled_at,pd.created_at
   limit 1
   for update of pd skip locked;
