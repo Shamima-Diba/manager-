@@ -105,7 +105,7 @@ async function performPublicationDelivery(message: any) {
     const access = decrypt(secret, key);
     const provider = new Mastodon(connection.origin);
     const text = Array.from(
-      [content?.title, content?.body].filter(Boolean).join("\\n\\n"),
+      [content?.title, content?.body].filter(Boolean).join("\n\n"),
     ).slice(0, 450).join("");
     if (!text.trim()) throw new ProviderError("rejected", "Approved article has no publishable text");
     const submitted = await provider.publish({
