@@ -1,4 +1,4 @@
-# manager — Banglar Voice 24
+# Manager — Independent Publishing Platform
 
 **Version 0.1.0 · incomplete source release · not production-ready.**
 
@@ -6,7 +6,7 @@ A standalone React SPA, Supabase data/authorization layer, durable pgmq jobs, CP
 
 ## Working core
 
-Email/password, reset and optional magic-link clients; workspace creation (initial name Banglar Voice 24); manually authored immutable articles; evidence notes; licensed private media registration and review; script snapshots; manually timed SRT/VTT validation; CPU render queue and MP4 preview; content review bound to current version; approved text article publication; static HTML/RSS/sitemap/category/search/about/contact generation; OAuth Mastodon text scheduling; durable publication outcomes; audit/job timelines. Authorization is enforced in SQL, not by UI visibility.
+Email/password, reset and optional magic-link clients; workspace creation (tenant-defined newsroom name); manually authored immutable articles; evidence notes; licensed private media registration and review; script snapshots; manually timed SRT/VTT validation; CPU render queue and MP4 preview; content review bound to current version; approved text article publication; static HTML/RSS/sitemap/category/search/about/contact generation; OAuth Mastodon text scheduling; durable publication outcomes; audit/job timelines. Authorization is enforced in SQL, not by UI visibility.
 
 No AI credentials are needed for the manual path. No fake speech, simulated publishing success, demonstration counts, or invented engagement metrics are returned. Render previews are private. Public website media promotion and social media attachments are **not implemented**.
 
@@ -24,7 +24,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Confirm your email using the local Supabase mail viewer. Sign in and create **Banglar Voice 24** / `banglar-voice-24`. This creates the first owner; no password is seeded. Set up the dedicated worker login per [worker deployment](docs/deployment-worker.md), then:
+Confirm your email using the local Supabase mail viewer. Sign in and create your own newsroom workspace (for example **My Newsroom** / `my-newsroom`). This creates the first owner; no password is seeded. Set up the dedicated worker login per [worker deployment](docs/deployment-worker.md), then:
 
 ```sh
 node --env-file=.env --import tsx apps/worker/src/main.ts
