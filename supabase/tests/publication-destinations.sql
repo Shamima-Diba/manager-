@@ -41,11 +41,12 @@ select pg_temp.ok(
   (select count(*)=1 from public.publication_deliveries where workspace_id=:'w' and version_id=:'v' and destination_id=:'d'),
   'Unique version/destination constraint prevents duplicate delivery intents'
 );
-do $$
+select set_config('test.workspace_id', :'w', true);
+do $
 begin
   begin
     perform public.register_publication_destination(
-      current_setting('test.workspace_id',true)::uuid,
+      current_setting('test.workspace_id')::uuid,
       'social','mastodon','Secret must be rejected','fixture:social:secret',null,'{"access_token":"not-allowed"}'
     );
     raise exception 'FAIL: secret-like public config accepted';
