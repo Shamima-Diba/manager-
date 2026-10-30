@@ -44,9 +44,12 @@ select pg_temp.ok((select not publication_dispatch_enabled from manager_private.
   'New ledger dispatch remains globally disabled by default');
 update manager_private.system_settings set publication_dispatch_enabled=true where singleton;
 
-set local role manager_worker_api;
+select pg_temp.ok(
+  has_function_privilege('manager_worker_api','manager_private.worker_claim_publication(text)','EXECUTE')
+  and not has_function_privilege('authenticated','manager_private.worker_claim_publication(text)','EXECUTE'),
+  'Worker claim RPC is granted only to the dedicated worker API role'
+);
 select manager_private.worker_claim_publication('fixture-worker') as claim \gset
-reset role;
 
 select (:'claim'::jsonb->'delivery'->>'id') as claimed_id,
        (:'claim'::jsonb->>'lease_token') as lease_token \gset
