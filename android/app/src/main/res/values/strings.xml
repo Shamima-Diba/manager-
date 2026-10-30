@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Banglar Voice 24</string>
+    <string name="title_activity_main">Banglar Voice 24</string>
+    <string name="package_name">com.banglarvoice24.manager</string>
+    <string name="custom_url_scheme">com.banglarvoice24.manager</string>
+</resources>
