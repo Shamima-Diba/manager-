@@ -42,8 +42,7 @@ select pg_temp.ok(
   'Unique version/destination constraint prevents duplicate delivery intents'
 );
 select set_config('test.workspace_id', :'w', true);
-do $
-begin
+do $$begin
   begin
     perform public.register_publication_destination(
       current_setting('test.workspace_id')::uuid,
