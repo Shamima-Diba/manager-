@@ -150,6 +150,7 @@ declare d public.publication_deliveries; next_status text; next_time timestamptz
 begin
   select * into d from public.publication_deliveries
     where id=p_delivery and status='dispatching' and lease_token=p_token
+      and lease_until>now()
     for update;
   if d.id is null then return; end if;
   if p_category='rate_limit' then
