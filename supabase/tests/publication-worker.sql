@@ -2,6 +2,11 @@
 -- Run after every migration on a disposable PostgreSQL 17 / Supabase database.
 -- psql -v ON_ERROR_STOP=1 -f supabase/tests/publication-worker.sql
 begin;
+create function pg_temp.ok(condition boolean,label text)
+returns void language plpgsql as $ begin
+  if not coalesce(condition,false) then raise exception 'FAIL: %',label; end if;
+  raise notice 'PASS: %',label;
+end $;
 insert into auth.users(id,email,email_confirmed_at)
 values ('13000000-0000-4000-8000-000000000001','publication-worker@example.test',now());
 
@@ -43,11 +48,11 @@ select (:'claim'::jsonb->'delivery'->>'id') as claimed_id,
        (:'claim'::jsonb->>'lease_token') as lease_token \gset
 select (:'claim'::jsonb->'destination'->>'provider_key')='mastodon' as adapter,
        (:'claim'::jsonb->'secret'->>'kid')='fixture-key' as private_secret_loaded \gset
-select case when :'adapter'='t' and :'private_secret_loaded'='t'
-  then 1 else 1/0 end;
+select pg_temp.ok(:'adapter'='t' and :'private_secret_loaded'='t',
+  'Worker claim loads provider and private encrypted secret');
 select (select status='dispatching' and worker_id='fixture-worker'
   from public.publication_deliveries where id=:'claimed_id'::uuid) as leased \gset
-select case when :'leased'='t' then 1 else 1/0 end;
+select pg_temp.ok(:'leased'='t','Worker claim acquires a lease');
 
 set local role manager_worker_api;
 select manager_private.worker_finish_publication(
@@ -56,11 +61,11 @@ select manager_private.worker_finish_publication(
 );
 reset role;
 
-select case when (select status='published'
+select pg_temp.ok((select status='published'
   and remote_id='fixture-remote-1'
   and remote_url='https://mastodon.example/@fixture/1'
   and lease_token is null
-  from public.publication_deliveries where id=:'claimed_id'::uuid)
-  then 1 else 1/0 end;
+  from public.publication_deliveries where id=:'claimed_id'::uuid),
+  'Confirmed provider receipt completes and releases the lease');
 
 rollback;
