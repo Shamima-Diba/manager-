@@ -74,15 +74,18 @@ begin
   token := gen_random_uuid();
 
   if dest.provider_key='mastodon' then
-    select sc, s.encrypted into conn, encrypted
+    select sc.* into conn
     from public.social_connections sc
-    join public.social_connection_secrets s
-      on s.workspace_id=sc.workspace_id and s.connection_id=sc.id
     where sc.workspace_id=d.workspace_id
       and sc.provider='mastodon'
       and sc.status='connected'
       and sc.id::text=dest.public_config->>'connection_id'
     limit 1;
+    if conn.id is not null then
+      select s.encrypted into encrypted
+      from public.social_connection_secrets s
+      where s.workspace_id=d.workspace_id and s.connection_id=conn.id;
+    end if;
   end if;
 
   update public.publication_deliveries
