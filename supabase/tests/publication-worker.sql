@@ -3,10 +3,10 @@
 -- psql -v ON_ERROR_STOP=1 -f supabase/tests/publication-worker.sql
 begin;
 create function pg_temp.ok(condition boolean,label text)
-returns void language plpgsql as $ begin
+returns void language plpgsql as $$ begin
   if not coalesce(condition,false) then raise exception 'FAIL: %',label; end if;
   raise notice 'PASS: %',label;
-end $;
+end $$;
 insert into auth.users(id,email,email_confirmed_at)
 values ('13000000-0000-4000-8000-000000000001','publication-worker@example.test',now());
 
