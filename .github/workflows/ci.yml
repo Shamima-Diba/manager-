@@ -43,6 +43,12 @@ jobs:
       - name: Install dependencies
         run: npm install --include=optional
 
+      - name: TypeScript validation
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
       - name: Build web frontend
         run: npm run build
 
