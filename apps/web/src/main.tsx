@@ -35,7 +35,7 @@ const readOnlyTables: Record<string, string> = {
   audit: "audit_logs",
   analytics: "analytics_snapshots",
   automation: "automation_rules",
-  integrations: "integration_settings",
+  integrations: "publication_destinations",
   social: "social_connections",
   calendar: "scheduled_publications",
   review: "content_items",
@@ -1707,23 +1707,138 @@ function App() {
                   </p>
                 </>
               )}
-              {["automation", "analytics", "integrations"].includes(page) && (
+              {["automation", "analytics"].includes(page) && (
                 <>
                   <section className="panel">
                     <h2>
                       {page === "automation"
                         ? "Automation execution: Not implemented"
-                        : page === "analytics"
-                          ? "Provider analytics ingestion: Not implemented"
-                          : "Integration setup"}
+                        : "Provider analytics ingestion: Not implemented"}
                     </h2>
                     <p>
                       {page === "automation"
                         ? "Rules schema is reserved; there is no autonomous public posting. Scheduled approved publications use the durable worker."
-                        : page === "analytics"
-                          ? "No invented engagement, revenue, costs, or reach metrics. Snapshot rows appear only when explicitly inserted by a trusted backend."
-                          : "Mastodon OAuth is available under Social Accounts. OpenAI-compatible/Ollama text generation is a server adapter, not connected to the current UI. TTS, media search, WordPress, Postiz, and generative video are not implemented."}
+                        : "No invented engagement, revenue, costs, or reach metrics. Snapshot rows appear only when explicitly inserted by a trusted backend."}
                     </p>
+                  </section>
+                  {list()}
+                </>
+              )}
+              {page === "integrations" && (
+                <>
+                  <section className="panel">
+                    <h2>Publication destinations</h2>
+                    <p>
+                      Configure this workspace's websites and social channels. New destinations start in shadow mode.
+                      Registering a destination does not connect credentials or publish content.
+                    </p>
+                    <form onSubmit={(e) => submit(e, async (f) => {
+                      let config: Row;
+                      try { config = JSON.parse(val(f, "public_config") || "{}"); }
+                      catch { throw Error("Public configuration must be valid JSON"); }
+                      return rpc("register_publication_destination", {
+                        p_workspace: workspace,
+                        p_destination_type: val(f, "destination_type"),
+                        p_provider_key: val(f, "provider_key"),
+                        p_display_name: val(f, "display_name"),
+                        p_target_key: val(f, "target_key") || null,
+                        p_endpoint_url: val(f, "endpoint_url") || null,
+                        p_public_config: config,
+                      });
+                    }, "Destination registered in shadow mode.")}>
+                      <label>Destination type
+                        <select name="destination_type" defaultValue="website">
+                          <option value="website">Website</option>
+                          <option value="social">Social channel</option>
+                        </select>
+                      </label>
+                      <label>Provider
+                        <select name="provider_key" defaultValue="manager_static">
+                          <optgroup label="Websites">
+                            <option value="manager_static">Manager static site</option>
+                            <option value="custom_http">Custom HTTPS endpoint</option>
+                            <option value="wordpress">WordPress (adapter pending)</option>
+                          </optgroup>
+                          <optgroup label="Social channels">
+                            <option value="mastodon">Mastodon</option>
+                            <option value="facebook">Facebook (adapter pending)</option>
+                            <option value="instagram">Instagram (adapter pending)</option>
+                            <option value="linkedin">LinkedIn (adapter pending)</option>
+                            <option value="x">X (adapter pending)</option>
+                            <option value="telegram">Telegram (adapter pending)</option>
+                            <option value="youtube">YouTube (video adapter pending)</option>
+                          </optgroup>
+                        </select>
+                      </label>
+                      {input("display_name", "Destination name", { maxLength: 120 })}
+                      {input("target_key", "Stable target key (non-secret)", { required: false, maxLength: 240 })}
+                      {input("endpoint_url", "HTTPS endpoint URL (optional)", { type: "url", required: false })}
+                      <label>Public configuration (JSON; never put credentials here)
+                        <textarea name="public_config" rows={4} defaultValue="{}" />
+                      </label>
+                      <button className="primary">Register destination</button>
+                    </form>
+                  </section>
+                  <section className="panel">
+                    <h2>Ownership control</h2>
+                    <p>
+                      Activate only after verifying the destination identity and completing a shadow comparison.
+                      The current worker does not dispatch the new delivery ledger.
+                    </p>
+                    <form onSubmit={(e) => submit(e, (f) => rpc("set_publication_destination_ownership", {
+                      p_destination: val(f, "destination_id"),
+                      p_mode: val(f, "ownership_mode"),
+                      p_evidence: val(f, "evidence"),
+                    }), "Destination ownership updated.")}>
+                      <label>Destination
+                        <select name="destination_id" required>
+                          {rows.map((r) => <option key={r.id} value={r.id}>{r.display_name} · {r.provider_key} · {r.ownership_mode}</option>)}
+                        </select>
+                      </label>
+                      <label>Ownership mode
+                        <select name="ownership_mode" defaultValue="shadow">
+                          <option value="shadow">Shadow — no dispatch</option>
+                          <option value="active">Active — reserved for Manager</option>
+                          <option value="paused">Paused</option>
+                        </select>
+                      </label>
+                      {input("evidence", "Cutover evidence (minimum 20 characters)", { minLength: 20, maxLength: 1000 })}
+                      <button>Update ownership mode</button>
+                    </form>
+                  </section>
+                  <section className="panel">
+                    <h2>Plan a publication delivery</h2>
+                    <p>
+                      Planning binds an approved immutable article version to one destination. This creates a ledger record only;
+                      no provider request is sent by this release.
+                    </p>
+                    <form onSubmit={(e) => submit(e, (f) => {
+                      const item = content.find((x) => x.id === val(f, "content_id"));
+                      if (!item?.current_version_id) throw Error("Select content with a current version");
+                      const when = val(f, "scheduled_at");
+                      return rpc("plan_publication_delivery", {
+                        p_workspace: workspace,
+                        p_content: item.id,
+                        p_version: item.current_version_id,
+                        p_destination: val(f, "delivery_destination"),
+                        p_scheduled_at: when ? new Date(when).toISOString() : new Date().toISOString(),
+                      });
+                    }, "Delivery intent recorded; no publication was sent.")}>
+                      <label>Approved article
+                        <select name="content_id" required>
+                          {content.map((x) => <option key={x.id} value={x.id}>{x.title} · v{x.version}</option>)}
+                        </select>
+                      </label>
+                      <label>Destination
+                        <select name="delivery_destination" required>
+                          {rows.map((r) => <option key={r.id} value={r.id}>{r.display_name} · {r.ownership_mode}</option>)}
+                        </select>
+                      </label>
+                      <label>Schedule time (optional)
+                        <input type="datetime-local" name="scheduled_at" />
+                      </label>
+                      <button className="primary">Plan delivery</button>
+                    </form>
                   </section>
                   {list()}
                 </>
