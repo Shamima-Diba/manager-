@@ -57,6 +57,9 @@ async function call(name: string, args: unknown[] = []) {
     "worker_asset",
     "worker_finish",
     "worker_fail",
+    "worker_claim_publication",
+    "worker_finish_publication",
+    "worker_fail_publication",
   ];
   if (!safe.includes(name)) throw Error("Invalid worker operation");
   const sql = `select manager_private.${name}(${args.map((_, i) => "$" + (i + 1)).join(",")}) as result`;
@@ -85,6 +88,67 @@ async function asset(workspace: string, id: string, dir: string) {
   const file = path.join(dir, id);
   await writeFile(file, bytes);
   return { file, license: a.license };
+}
+async function performPublicationDelivery(message: any) {
+  const { delivery, content, destination, connection, secret, lease_token } = message;
+  try {
+    if (destination?.provider_key !== "mastodon")
+      throw new ProviderError(
+        "rejected",
+        `No production adapter is enabled for provider: ${destination?.provider_key || "unknown"}`,
+      );
+    if (!connection || connection.status !== "connected" || !secret)
+      throw new ProviderError("auth", "Mastodon destination has no connected workspace OAuth account");
+    const key = Buffer.from(process.env.TOKEN_KEY_BASE64 || "", "base64");
+    if (!process.env.TOKEN_KEY_ID || secret.kid !== process.env.TOKEN_KEY_ID)
+      throw new ProviderError("auth", "Encryption key id unavailable");
+    const access = decrypt(secret, key);
+    const provider = new Mastodon(connection.origin);
+    const text = Array.from(
+      [content?.title, content?.body].filter(Boolean).join("\\n\\n"),
+    ).slice(0, 450).join("");
+    if (!text.trim()) throw new ProviderError("rejected", "Approved article has no publishable text");
+    const submitted = await provider.publish({
+      text,
+      key: delivery.idempotency_key,
+      token: access,
+      language: content.language || "bn",
+    });
+    const confirmed = await provider.verify(submitted.id, access);
+    await call("worker_finish_publication", [
+      delivery.id,
+      lease_token,
+      confirmed.id,
+      confirmed.url,
+    ]);
+    log("publication_delivery_confirmed", {
+      delivery: delivery.id,
+      provider: destination.provider_key,
+      remote_id: confirmed.id,
+    });
+  } catch (e) {
+    const err = e as Error;
+    const category = e instanceof ProviderError ? e.category : "unknown";
+    log("publication_delivery_error", {
+      delivery: delivery?.id,
+      category,
+      error: redact(err.message),
+    });
+    try {
+      await call("worker_fail_publication", [
+        delivery.id,
+        lease_token,
+        category,
+        redact(err.message),
+        e instanceof ProviderError ? e.retryAfter : 60,
+      ]);
+    } catch (failure) {
+      log("publication_delivery_outcome_record_failed", {
+        delivery: delivery?.id,
+        error: redact((failure as Error).message),
+      });
+    }
+  }
 }
 async function perform(message: any) {
   const { run, job, token, msg_id } = message;
@@ -248,7 +312,10 @@ while (!stopping) {
     await call("worker_dispatch");
     const message = await call("worker_claim", [worker]);
     if (message) await perform(message);
-    else await new Promise((r) => setTimeout(r, 2000));
+    const publication = await call("worker_claim_publication", [worker]);
+    if (publication) await performPublicationDelivery(publication);
+    if (!message && !publication)
+      await new Promise((r) => setTimeout(r, 2000));
   } catch (e) {
     log("worker_loop_error", { error: (e as Error).message });
     await new Promise((r) => setTimeout(r, 5000));
