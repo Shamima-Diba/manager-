@@ -58,8 +58,8 @@ begin
     and not w.publishing_paused
     and not ss.publishing_killed
   order by pd.scheduled_at,pd.created_at
-  for update of pd skip locked
-  limit 1;
+  limit 1
+  for update of pd skip locked;
 
   if d.id is null then return null; end if;
 
@@ -70,7 +70,7 @@ begin
   token := gen_random_uuid();
 
   if dest.provider_key='mastodon' then
-    select sc.*, s.encrypted into conn, encrypted
+    select sc, s.encrypted into conn, encrypted
     from public.social_connections sc
     join public.social_connection_secrets s
       on s.workspace_id=sc.workspace_id and s.connection_id=sc.id
@@ -120,7 +120,7 @@ begin
     for update;
   if d.id is null then raise exception 'Publication lease lost'; end if;
   if p_remote_id is null or length(trim(p_remote_id))=0
-     or p_remote_url !~ '^https://' then
+     or p_remote_url is null or p_remote_url !~ '^https://' then
     raise exception 'Provider receipt is incomplete';
   end if;
   update public.publication_deliveries
