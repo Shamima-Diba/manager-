@@ -178,7 +178,7 @@ begin
   perform manager_private.check_approved(c);
   select * into d from public.publication_destinations
     where id=p_destination and workspace_id=p_workspace for share;
-  if d.id is null or not d.enabled then raise exception 'Destination is missing or disabled'; end if;
+  if d.id is null or d.ownership_mode='paused' then raise exception 'Destination is missing or paused'; end if;
   -- Shadow destinations create plans only; the current worker cannot dispatch this ledger.
   v_status := case when d.ownership_mode='active' then 'scheduled' else 'planned' end;
   insert into public.publication_deliveries(
