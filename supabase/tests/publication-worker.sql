@@ -40,6 +40,10 @@ select public.set_publication_destination_ownership(
 select public.plan_publication_delivery(:'w',:'c',:'v',:'d',now()) as delivery \gset
 reset role;
 
+select pg_temp.ok((select not publication_dispatch_enabled from manager_private.system_settings where singleton),
+  'New ledger dispatch remains globally disabled by default');
+update manager_private.system_settings set publication_dispatch_enabled=true where singleton;
+
 set local role manager_worker_api;
 select manager_private.worker_claim_publication('fixture-worker') as claim \gset
 reset role;
