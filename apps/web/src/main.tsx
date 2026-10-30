@@ -449,7 +449,7 @@ function App() {
   if (!session)
     return (
       <main className="auth">
-        <div className="eyebrow">BANGLAR VOICE 24</div>
+        <div className="eyebrow">MULTI-TENANT PUBLISHING</div>
         <h1>
           manager<span className="accent">.</span>
         </h1>
@@ -584,7 +584,7 @@ function App() {
           </button>
           <span className="workspace-label">
             {workspaces.find((w) => w.id === workspace)?.name ||
-              "Banglar Voice 24"}
+              "My newsroom"}
           </span>
           <span className="spacer" />
           <button onClick={() => setLang(lang === "bn" ? "en" : "bn")}>
@@ -661,9 +661,9 @@ function App() {
                   })
                 }
               >
-                {input("name", "Name", { defaultValue: "Banglar Voice 24" })}
+                {input("name", "Name", { defaultValue: "My Newsroom" })}
                 {input("slug", "Slug", {
-                  defaultValue: "banglar-voice-24",
+                  defaultValue: "my-newsroom",
                   pattern: "[a-z0-9][a-z0-9-]{2,60}",
                 })}
                 <button className="primary">Create workspace</button>
