@@ -14,7 +14,7 @@ New destinations start in **shadow** mode. Shadow mode is for inventory and deli
 
 The planning RPC checks workspace publisher permissions and current-version approval. A shadow destination receives status `planned`; an active destination receives `scheduled`.
 
-Migration 005 connects this ledger to the existing continuous worker. Claims are row-locked and leased; an expired lease becomes `needs_reconciliation`, never an automatic repost. Successful Mastodon delivery requires a provider read-back before the receipt is marked published. Rate limits are rescheduled; rejected/auth failures are terminal until an operator resolves them; uncertain network outcomes require reconciliation.
+Migration 005 connects this ledger to the existing continuous worker, but adds a separate global `publication_dispatch_enabled` opt-in that defaults to **false**. Activating a destination alone cannot start new-ledger dispatch. Claims are row-locked and leased; an expired lease becomes `needs_reconciliation`, never an automatic repost. Successful Mastodon delivery requires a provider read-back before the receipt is marked published. Rate limits are rescheduled; rejected/auth failures are terminal until an operator resolves them; uncertain network outcomes require reconciliation.
 
 ## First adapter: Mastodon
 
