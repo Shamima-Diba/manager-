@@ -65,7 +65,10 @@ function App() {
     [menu, setMenu] = useState(false),
     [timeline, setTimeline] = useState<Row[]>([]),
     [invite, setInvite] = useState(""),
-    [scheduleKey, setScheduleKey] = useState(() => crypto.randomUUID());
+    [scheduleKey, setScheduleKey] = useState(() => crypto.randomUUID()),
+    [incomingIntegrations, setIncomingIntegrations] = useState<Row[]>([]),
+    [incomingEvents, setIncomingEvents] = useState<Row[]>([]),
+    [newIntegrationKey, setNewIntegrationKey] = useState("");
   const t = (bn: string, en: string) => (lang === "bn" ? bn : en);
   const current = content.find((c) => c.id === selected);
   const refresh = () => setTick((x) => x + 1);
@@ -167,6 +170,20 @@ function App() {
         result = q.data || [];
       } else result = await load(table);
       if (active) setRows(result);
+      if (page === "integrations") {
+        const [integrationResult, eventResult] = await Promise.all([
+          db!.from("workspace_integrations").select("id,name,source_system,enabled,created_at,last_seen_at")
+            .eq("workspace_id", workspace).order("created_at", { ascending: false }).limit(50),
+          db!.from("integration_events").select("id,external_event_id,event_type,occurred_at,received_at")
+            .eq("workspace_id", workspace).order("received_at", { ascending: false }).limit(25),
+        ]);
+        if (integrationResult.error) throw integrationResult.error;
+        if (eventResult.error) throw eventResult.error;
+        if (active) {
+          setIncomingIntegrations(integrationResult.data || []);
+          setIncomingEvents(eventResult.data || []);
+        }
+      }
       if (page === "dashboard") {
         const pairs = await Promise.all(
           [
@@ -1726,6 +1743,79 @@ function App() {
               )}
               {page === "integrations" && (
                 <>
+                  <section className="panel">
+                    <h2>Incoming newsroom connection · shadow mode</h2>
+                    <p>
+                      Connect the existing newsroom backend. Manager stores signed event copies only;
+                      this connection cannot publish, approve, or change the existing newsroom.
+                    </p>
+                    <form onSubmit={(e) => submit(e, async (f) => {
+                      const { data: { session: activeSession } } = await db!.auth.getSession();
+                      if (!activeSession) throw Error("Sign in again to create an integration");
+                      const response = await fetch(url + "/functions/v1/integration-admin", {
+                        method: "POST",
+                        headers: {
+                          Authorization: "Bearer " + activeSession.access_token,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          workspace_id: workspace,
+                          name: val(f, "integration_name"),
+                          source_system: val(f, "source_system"),
+                        }),
+                      });
+                      const result = await response.json();
+                      if (!response.ok) throw Error(result.error || "Unable to create newsroom integration");
+                      setNewIntegrationKey(result.integration_key);
+                      return result.integration;
+                    }, "Shadow integration created. Copy and store its key securely; it is shown only once.")}>
+                      {input("integration_name", "Connection name", { defaultValue: "Banglar Voice newsroom", maxLength: 120 })}
+                      <label>Source system
+                        <input name="source_system" defaultValue="automation_king" pattern="[a-z][a-z0-9_-]{1,39}" required />
+                      </label>
+                      <button className="primary">Create newsroom connection</button>
+                    </form>
+                    {newIntegrationKey && (
+                      <div className="panel">
+                        <strong>One-time integration key</strong>
+                        <p>Copy this key now into the existing newsroom backend's server-side secret store. Do not send it in chat or commit it.</p>
+                        <input readOnly value={newIntegrationKey} />
+                        <div className="actions">
+                          <button type="button" onClick={() => void navigator.clipboard.writeText(newIntegrationKey)}>Copy key</button>
+                          <button type="button" onClick={() => setNewIntegrationKey("")}>I stored the key</button>
+                        </div>
+                      </div>
+                    )}
+                    <h3>Connected newsroom senders</h3>
+                    {incomingIntegrations.length ? incomingIntegrations.map((item) => (
+                      <article className="record" key={item.id}>
+                        <header>
+                          <strong>{item.name} · {item.source_system}</strong>
+                          <span className="badge">{item.enabled ? "enabled" : "disabled"}</span>
+                        </header>
+                        <div className="kv"><span>Last event</span><code>{item.last_seen_at || "No event received"}</code></div>
+                        {item.enabled && <button type="button" onClick={() => act(async () => {
+                          const { data: { session: activeSession } } = await db!.auth.getSession();
+                          if (!activeSession) throw Error("Sign in again");
+                          const response = await fetch(url + "/functions/v1/integration-admin", {
+                            method: "POST",
+                            headers: { Authorization: "Bearer " + activeSession.access_token, "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "disable", workspace_id: workspace, integration_id: item.id }),
+                          });
+                          const result = await response.json();
+                          if (!response.ok) throw Error(result.error || "Unable to disable integration");
+                        }, "Newsroom integration disabled")}>Disable sender</button>}
+                      </article>
+                    )) : <p>No newsroom sender connected.</p>}
+                    <h3>Recent incoming events</h3>
+                    {incomingEvents.length ? incomingEvents.map((event) => (
+                      <article className="record" key={event.id}>
+                        <header><strong>{event.event_type}</strong><span className="badge">shadow received</span></header>
+                        <div className="kv"><span>Event ID</span><code>{event.external_event_id}</code></div>
+                        <div className="kv"><span>Received</span><code>{event.received_at}</code></div>
+                      </article>
+                    )) : <p>No newsroom events received yet.</p>}
+                  </section>
                   <section className="panel">
                     <h2>Publication destinations</h2>
                     <p>
