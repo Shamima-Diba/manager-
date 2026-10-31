@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite apps/web --host 0.0.0.0",
-    "build": "vite build apps/web",
+    "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
