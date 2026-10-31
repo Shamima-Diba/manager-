@@ -175,7 +175,7 @@ footer{margin-top:54px;padding:24px 20px;text-align:center;border-top:1px solid 
 export async function exportSite() {
   const url = process.env.SUPABASE_URL,
     key = process.env.SUPABASE_ANON_KEY,
-    origin = process.env.PUBLIC_SITE_ORIGIN;
+    origin = process.env.PUBLIC_SITE_ORIGIN || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
   if (!url || !key || !origin)
     throw Error("Public site requires SUPABASE_URL, SUPABASE_ANON_KEY and PUBLIC_SITE_ORIGIN");
   // The export RPC is deliberately safe for anon: it exposes only approved public snapshots.
