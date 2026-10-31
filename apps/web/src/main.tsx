@@ -484,31 +484,57 @@ function App() {
                 const mode = val(f, "mode"),
                   email = val(f, "email"),
                   password = val(f, "password");
-                const result =
-                  mode === "signup"
-                    ? await db!.auth.signUp({
-                        email,
-                        password,
-                        options: { emailRedirectTo: location.origin },
-                      })
-                    : mode === "reset"
-                      ? await db!.auth.resetPasswordForEmail(email, {
-                          redirectTo: location.origin,
-                        })
-                      : mode === "magic"
-                        ? await db!.auth.signInWithOtp({
-                            email,
-                            options: { emailRedirectTo: location.origin },
-                          })
-                        : await db!.auth.signInWithPassword({
-                            email,
-                            password,
-                          });
-                if (result.error) throw result.error;
+                const redirectTo = new URL("/", location.origin).toString();
+                if (mode === "signup") {
+                  const { data, error } = await db!.auth.signUp({
+                    email,
+                    password,
+                    options: { emailRedirectTo: redirectTo },
+                  });
+                  if (error) throw error;
+                  // Supabase intentionally returns a successful, empty-looking response
+                  // for an already-registered address to prevent account enumeration.
+                  // In that case it does not send another confirmation email.
+                  if (data.user && data.user.identities?.length === 0) {
+                    throw new Error(
+                      t(
+                        "এই ইমেইলে অ্যাকাউন্ট আগে থেকেই আছে। নতুন account তৈরি হয়নি এবং confirmation email পাঠানো হয়নি। Magic link দিয়ে প্রবেশ করুন অথবা Reset password ব্যবহার করুন।",
+                        "An account already exists for this email. No new account or confirmation email was created. Choose Magic link to sign in or Reset password.",
+                      ),
+                    );
+                  }
+                  return;
+                }
+                if (mode === "resend") {
+                  const { error } = await db!.auth.resend({
+                    type: "signup",
+                    email,
+                    options: { emailRedirectTo: redirectTo },
+                  });
+                  if (error) throw error;
+                  return;
+                }
+                if (mode === "reset") {
+                  const { error } = await db!.auth.resetPasswordForEmail(email, {
+                    redirectTo,
+                  });
+                  if (error) throw error;
+                  return;
+                }
+                if (mode === "magic") {
+                  const { error } = await db!.auth.signInWithOtp({
+                    email,
+                    options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+                  });
+                  if (error) throw error;
+                  return;
+                }
+                const { error } = await db!.auth.signInWithPassword({ email, password });
+                if (error) throw error;
               },
               t(
-                "অনুরোধ সফল। ইমেইল প্রয়োজন হলে ইনবক্স দেখুন।",
-                "Request succeeded. Check your inbox if email confirmation is needed.",
+                "অনুরোধটি গ্রহণ করা হয়েছে। ইমেইল আসা নিশ্চিত না হওয়া পর্যন্ত ইনবক্স ও Spam/Junk দেখুন। না এলে Supabase SMTP delivery পরীক্ষা করতে হবে।",
+                "Request accepted. Check inbox and Spam/Junk; this does not guarantee delivery. If no email arrives, SMTP delivery must be checked.",
               ),
             )
           }
@@ -529,6 +555,7 @@ function App() {
               <option value="signin">Sign in</option>
               <option value="signup">Create account</option>
               <option value="reset">Reset password</option>
+              <option value="resend">Resend confirmation email</option>
               <option value="magic">Magic link</option>
             </select>
           </label>
