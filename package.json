@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "worker": "tsx apps/worker/src/main.ts",
-    "site:build": "tsx apps/public-site/src/build.ts",
+    "site:build": "node scripts/site-preview-guard.mjs && tsx apps/public-site/src/build.ts",
     "doctor": "tsx scripts/doctor.ts",
     "smoke-test": "tsx scripts/smoke-test.ts",
     "package": "python3 scripts/package.py"
