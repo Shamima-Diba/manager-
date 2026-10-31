@@ -1,17 +1,26 @@
-# Shadow newsroom integration (first safe connection)
+# Shadow newsroom integration (first live-safe connection)
 
-This is an additive, inbound-only integration. It lets an existing newsroom system send event copies to Manager while the existing publisher remains authoritative.
+This is an additive, inbound-only integration. Existing newsroom publishing remains authoritative. Manager receives copies of events and stores them for observation only.
+
+## Live Manager backend
+
+The integration migration and both Edge Functions have been deployed to the Manager Supabase project `dbxbbfqsgjzeqswpwjbk` (PostgreSQL 17, us-east-1).
+
+- Admin endpoint: `https://dbxbbfqsgjzeqswpwjbk.supabase.co/functions/v1/integration-admin` (JWT required)
+- Inbound event endpoint: `https://dbxbbfqsgjzeqswpwjbk.supabase.co/functions/v1/integration-ingest` (HMAC integration key required)
+- Database inbox: `public.integration_events`
+- Integration registry: `public.workspace_integrations`
 
 ## What happens
 
-1. A workspace owner/admin creates an integration using the `integration-admin` Edge Function.
-2. Manager returns a random integration key once. The database stores only its SHA-256 hash.
+1. A Manager workspace owner/admin creates an integration using `integration-admin`.
+2. Manager returns a random integration key once. Only its SHA-256 hash is stored in the database.
 3. The existing newsroom backend sends an event copy to `integration-ingest` over HTTPS.
 4. Each request includes a timestamp and HMAC-SHA256 signature over `<timestamp>.<raw JSON body>`, using the integration key.
 5. Manager validates the credential, signature, five-minute timestamp window and event schema; it stores the event in a tenant-scoped inbox.
 6. Repeated event IDs from the same integration are accepted as duplicates and are not stored twice.
 
-**This release is observation-only.** It does not call Automation King, read its database, change reporter/editor status, create a publication job, or publish/reject any story. The Manager response always includes `mode: shadow` and `publication_performed: false`.
+**This is observation-only.** It does not call Automation King, read its database, change reporter/editor status, create a publication job, or publish/reject any story. The response includes `mode: shadow` and `publication_performed: false`.
 
 ## Create an integration
 
@@ -25,7 +34,7 @@ Call `POST /functions/v1/integration-admin` with a signed-in Manager user's Supa
 }
 ```
 
-The returned `integration_key` is displayed once. Save it in the existing newsroom backend's server-side secret store, never in a mobile app, browser, source file or chat. If it is lost, disable that integration and create a replacement.
+The returned `integration_key` is displayed once. Save it in a server-side secret store, never in a mobile app, browser, source file or chat. If it is lost, disable that integration and create a replacement.
 
 Disable with the same authenticated endpoint:
 
@@ -73,8 +82,8 @@ The receiver accepts payloads up to 64 KiB, rejects nested credential-like keys,
 
 Required fields: `event_id`, `event_type`, `occurred_at` (ISO date-time), and object `payload`. Example event types include `report.submitted`, `report.updated`, `editor.review_requested`, `media.attached`, and `article.published`. Event names are not hard-coded to one newsroom's editorial policy.
 
-Manager stores the event payload as an observation. It does not infer that a reporter submission is verified or approved. Future AI analysis/feedback must be a separate, versioned response contract and must never silently publish or reject.
+Manager stores the event payload as an observation. It does not infer that a reporter submission is verified or approved. AI feedback is not yet wired to this receiver.
 
-## Deployment boundary
+## Deployment boundary and next step
 
-Apply the new migration and deploy these two Edge Functions only to a disposable/staging Manager project first. No Automation King production changes are required for Manager-side staging, but a real connection still requires a server-side sender in Automation King. Keep the existing publisher as the only active publisher throughout shadow testing.
+The Manager-side backend is live, but no Automation King sender has been installed and no BanglarVoice event has been received yet. To start the first shadow test, an owner/admin must create the integration in Manager, securely install the one-time key in the existing newsroom backend, and send a fixture event. This requires a small server-side sender change in the Automation King repository; it does not require a production database migration or publisher replacement. Keep the existing publisher as the only active publisher throughout shadow testing.
