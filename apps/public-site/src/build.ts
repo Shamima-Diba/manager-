@@ -41,7 +41,26 @@ export async function buildSite(data: PublicData, out: string, origin: string) {
     route: string,
     body: string,
   ) =>
-    `<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(title)}</title><meta name="description" content="${e(description)}"><meta property="og:title" content="${e(title)}"><meta property="og:description" content="${e(description)}"><meta property="og:type" content="article"><meta property="og:url" content="${e(base + "/" + route)}"><link rel="canonical" href="${e(base + "/" + route)}"><style>body{font-family:system-ui,sans-serif;color:#182132;background:#f7f8fb;max-width:880px;margin:40px auto;padding:0 24px;line-height:1.9}article{background:white;border:1px solid #dde3ed;padding:30px;border-radius:12px;margin:20px 0}h1{line-height:1.5}a{color:#174ba4}nav{display:flex;gap:20px;flex-wrap:wrap}.body{white-space:pre-wrap;overflow-wrap:anywhere}input{padding:12px;font:inherit;width:100%}</style></head><body>${body}<footer><p>Powered by manager · Human-reviewed publishing</p></footer></body></html>`;
+    `<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(title)}</title><meta name="description" content="${e(description)}"><meta property="og:title" content="${e(title)}"><meta property="og:description" content="${e(description)}"><meta property="og:type" content="article"><meta property="og:url" content="${e(base + "/" + route)}"><link rel="canonical" href="${e(base + "/" + route)}"><style>
+:root{color-scheme:light;--ink:#172033;--muted:#667085;--line:#e7eaf0;--paper:#fff;--canvas:#f5f7fb;--brand:#123b73;--accent:#d62828;font-family:Inter,"Noto Serif Bengali",system-ui,sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--canvas);color:var(--ink);line-height:1.75;font-size:16px}
+a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}header{background:var(--paper);border-bottom:1px solid var(--line);padding:22px max(20px,calc((100vw - 1180px)/2));box-shadow:0 4px 18px #17203308}
+header h2{margin:0 0 14px;text-align:center;font-family:"Noto Serif Bengali",serif;font-size:clamp(25px,4vw,38px);line-height:1.35;font-weight:800;letter-spacing:-.02em}
+header h2 a{color:var(--brand)}nav{display:flex;justify-content:center;align-items:center;gap:clamp(12px,2.3vw,28px);flex-wrap:wrap;border-top:1px solid var(--line);padding-top:13px}
+nav a{font-size:14px;font-weight:700;color:#344054;white-space:nowrap}
+body>h1,body>article,body>main,body>section{width:min(1180px,calc(100% - 40px));margin:26px auto}
+body>h1{font-family:"Noto Serif Bengali",serif;font-size:clamp(25px,4vw,36px);line-height:1.4}
+article{background:var(--paper);border:1px solid var(--line);padding:clamp(18px,3vw,30px);border-radius:14px;margin:18px auto;box-shadow:0 8px 24px #17203308}
+article h1,article h2{font-family:"Noto Serif Bengali",serif;line-height:1.55;margin:0 0 12px}
+article h1{font-size:clamp(25px,4vw,38px)}article h2{font-size:clamp(19px,2.4vw,25px)}
+article p{color:#475467;margin:8px 0 14px}time{font-size:13px;color:var(--muted)}
+.body{white-space:pre-wrap;overflow-wrap:anywhere;font-family:"Noto Serif Bengali",serif;font-size:18px;line-height:2.05}
+input{padding:12px 14px;font:inherit;width:100%;border:1px solid #d0d5dd;border-radius:9px;background:#fff}
+footer{margin-top:54px;padding:24px 20px;text-align:center;border-top:1px solid var(--line);background:#fff;color:var(--muted);font-size:13px}
+:focus-visible{outline:3px solid #f59e0b;outline-offset:3px}
+@media(max-width:600px){header{padding:16px 14px}nav{justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;padding:12px 2px 6px;gap:18px}nav a{font-size:13px}body>h1,body>article,body>main,body>section{width:calc(100% - 24px);margin:16px auto}article{padding:18px;border-radius:11px}.body{font-size:17px;line-height:1.95}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style></head><body>${body}<footer><p>Powered by manager · Human-reviewed publishing</p></footer></body></html>`;
   await write(
     "",
     shell(
