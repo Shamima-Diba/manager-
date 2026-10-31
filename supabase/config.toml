@@ -26,3 +26,9 @@ enabled = true
 file_size_limit = "50MiB"
 [functions.social-oauth]
 verify_jwt = false
+
+[functions.integration-admin]
+verify_jwt = false
+
+[functions.integration-ingest]
+verify_jwt = false
