@@ -35,7 +35,6 @@ const readOnlyTables: Record<string, string> = {
   audit: "audit_logs",
   analytics: "analytics_snapshots",
   automation: "automation_rules",
-  integrations: "integration_settings",
   social: "social_connections",
   calendar: "scheduled_publications",
   review: "content_items",
@@ -65,7 +64,10 @@ function App() {
     [menu, setMenu] = useState(false),
     [timeline, setTimeline] = useState<Row[]>([]),
     [invite, setInvite] = useState(""),
-    [scheduleKey, setScheduleKey] = useState(() => crypto.randomUUID());
+    [scheduleKey, setScheduleKey] = useState(() => crypto.randomUUID()),
+    [incomingIntegrations, setIncomingIntegrations] = useState<Row[]>([]),
+    [incomingEvents, setIncomingEvents] = useState<Row[]>([]),
+    [newIntegrationKey, setNewIntegrationKey] = useState("");
   const t = (bn: string, en: string) => (lang === "bn" ? bn : en);
   const current = content.find((c) => c.id === selected);
   const refresh = () => setTick((x) => x + 1);
@@ -154,7 +156,11 @@ function App() {
         )[page] ||
         "audit_logs";
       let result: Row[] = [];
-      if (page === "team") {
+      if (page === "integrations") {
+        // The new publication ledger migrations are not yet reconciled to live main.
+        // Keep this Preview's inbound shadow inbox usable without querying absent ledger tables.
+        result = [];
+      } else if (page === "team") {
         const q = await db!
           .from(table)
           .select("*")
@@ -167,6 +173,20 @@ function App() {
         result = q.data || [];
       } else result = await load(table);
       if (active) setRows(result);
+      if (page === "integrations") {
+        const [integrationResult, eventResult] = await Promise.all([
+          db!.from("workspace_integrations").select("id,name,source_system,enabled,created_at,last_seen_at")
+            .eq("workspace_id", workspace).order("created_at", { ascending: false }).limit(50),
+          db!.from("integration_events").select("id,external_event_id,event_type,occurred_at,received_at")
+            .eq("workspace_id", workspace).order("received_at", { ascending: false }).limit(25),
+        ]);
+        if (integrationResult.error) throw integrationResult.error;
+        if (eventResult.error) throw eventResult.error;
+        if (active) {
+          setIncomingIntegrations(integrationResult.data || []);
+          setIncomingEvents(eventResult.data || []);
+        }
+      }
       if (page === "dashboard") {
         const pairs = await Promise.all(
           [
@@ -449,7 +469,7 @@ function App() {
   if (!session)
     return (
       <main className="auth">
-        <div className="eyebrow">BANGLAR VOICE 24</div>
+        <div className="eyebrow">MULTI-TENANT PUBLISHING</div>
         <h1>
           manager<span className="accent">.</span>
         </h1>
@@ -464,31 +484,57 @@ function App() {
                 const mode = val(f, "mode"),
                   email = val(f, "email"),
                   password = val(f, "password");
-                const result =
-                  mode === "signup"
-                    ? await db!.auth.signUp({
-                        email,
-                        password,
-                        options: { emailRedirectTo: location.origin },
-                      })
-                    : mode === "reset"
-                      ? await db!.auth.resetPasswordForEmail(email, {
-                          redirectTo: location.origin,
-                        })
-                      : mode === "magic"
-                        ? await db!.auth.signInWithOtp({
-                            email,
-                            options: { emailRedirectTo: location.origin },
-                          })
-                        : await db!.auth.signInWithPassword({
-                            email,
-                            password,
-                          });
-                if (result.error) throw result.error;
+                const redirectTo = new URL("/", location.origin).toString();
+                if (mode === "signup") {
+                  const { data, error } = await db!.auth.signUp({
+                    email,
+                    password,
+                    options: { emailRedirectTo: redirectTo },
+                  });
+                  if (error) throw error;
+                  // Supabase intentionally returns a successful, empty-looking response
+                  // for an already-registered address to prevent account enumeration.
+                  // In that case it does not send another confirmation email.
+                  if (data.user && data.user.identities?.length === 0) {
+                    throw new Error(
+                      t(
+                        "এই ইমেইলে অ্যাকাউন্ট আগে থেকেই আছে। নতুন account তৈরি হয়নি এবং confirmation email পাঠানো হয়নি। Magic link দিয়ে প্রবেশ করুন অথবা Reset password ব্যবহার করুন।",
+                        "An account already exists for this email. No new account or confirmation email was created. Choose Magic link to sign in or Reset password.",
+                      ),
+                    );
+                  }
+                  return;
+                }
+                if (mode === "resend") {
+                  const { error } = await db!.auth.resend({
+                    type: "signup",
+                    email,
+                    options: { emailRedirectTo: redirectTo },
+                  });
+                  if (error) throw error;
+                  return;
+                }
+                if (mode === "reset") {
+                  const { error } = await db!.auth.resetPasswordForEmail(email, {
+                    redirectTo,
+                  });
+                  if (error) throw error;
+                  return;
+                }
+                if (mode === "magic") {
+                  const { error } = await db!.auth.signInWithOtp({
+                    email,
+                    options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+                  });
+                  if (error) throw error;
+                  return;
+                }
+                const { error } = await db!.auth.signInWithPassword({ email, password });
+                if (error) throw error;
               },
               t(
-                "অনুরোধ সফল। ইমেইল প্রয়োজন হলে ইনবক্স দেখুন।",
-                "Request succeeded. Check your inbox if email confirmation is needed.",
+                "অনুরোধটি গ্রহণ করা হয়েছে। ইমেইল আসা নিশ্চিত না হওয়া পর্যন্ত ইনবক্স ও Spam/Junk দেখুন। না এলে Supabase SMTP delivery পরীক্ষা করতে হবে।",
+                "Request accepted. Check inbox and Spam/Junk; this does not guarantee delivery. If no email arrives, SMTP delivery must be checked.",
               ),
             )
           }
@@ -509,6 +555,7 @@ function App() {
               <option value="signin">Sign in</option>
               <option value="signup">Create account</option>
               <option value="reset">Reset password</option>
+              <option value="resend">Resend confirmation email</option>
               <option value="magic">Magic link</option>
             </select>
           </label>
@@ -584,7 +631,7 @@ function App() {
           </button>
           <span className="workspace-label">
             {workspaces.find((w) => w.id === workspace)?.name ||
-              "Banglar Voice 24"}
+              "My newsroom"}
           </span>
           <span className="spacer" />
           <button onClick={() => setLang(lang === "bn" ? "en" : "bn")}>
@@ -661,9 +708,9 @@ function App() {
                   })
                 }
               >
-                {input("name", "Name", { defaultValue: "Banglar Voice 24" })}
+                {input("name", "Name", { defaultValue: "My Newsroom" })}
                 {input("slug", "Slug", {
-                  defaultValue: "banglar-voice-24",
+                  defaultValue: "my-newsroom",
                   pattern: "[a-z0-9][a-z0-9-]{2,60}",
                 })}
                 <button className="primary">Create workspace</button>
@@ -1707,22 +1754,105 @@ function App() {
                   </p>
                 </>
               )}
-              {["automation", "analytics", "integrations"].includes(page) && (
+              {["automation", "analytics"].includes(page) && (
                 <>
                   <section className="panel">
                     <h2>
                       {page === "automation"
                         ? "Automation execution: Not implemented"
-                        : page === "analytics"
-                          ? "Provider analytics ingestion: Not implemented"
-                          : "Integration setup"}
+                        : "Provider analytics ingestion: Not implemented"}
                     </h2>
                     <p>
                       {page === "automation"
                         ? "Rules schema is reserved; there is no autonomous public posting. Scheduled approved publications use the durable worker."
-                        : page === "analytics"
-                          ? "No invented engagement, revenue, costs, or reach metrics. Snapshot rows appear only when explicitly inserted by a trusted backend."
-                          : "Mastodon OAuth is available under Social Accounts. OpenAI-compatible/Ollama text generation is a server adapter, not connected to the current UI. TTS, media search, WordPress, Postiz, and generative video are not implemented."}
+                        : "No invented engagement, revenue, costs, or reach metrics. Snapshot rows appear only when explicitly inserted by a trusted backend."}
+                    </p>
+                  </section>
+                  {list()}
+                </>
+              )}
+              {page === "integrations" && (
+                <>
+                  <section className="panel">
+                    <h2>Incoming newsroom connection · shadow mode</h2>
+                    <p>
+                      Connect the existing newsroom backend. Manager stores signed event copies only;
+                      this connection cannot publish, approve, or change the existing newsroom.
+                    </p>
+                    <form onSubmit={(e) => submit(e, async (f) => {
+                      const { data: { session: activeSession } } = await db!.auth.getSession();
+                      if (!activeSession) throw Error("Sign in again to create an integration");
+                      const response = await fetch(url + "/functions/v1/integration-admin", {
+                        method: "POST",
+                        headers: {
+                          Authorization: "Bearer " + activeSession.access_token,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          workspace_id: workspace,
+                          name: val(f, "integration_name"),
+                          source_system: val(f, "source_system"),
+                        }),
+                      });
+                      const result = await response.json();
+                      if (!response.ok) throw Error(result.error || "Unable to create newsroom integration");
+                      setNewIntegrationKey(result.integration_key);
+                      return result.integration;
+                    }, "Shadow integration created. Copy and store its key securely; it is shown only once.")}>
+                      {input("integration_name", "Connection name", { defaultValue: "Banglar Voice newsroom", maxLength: 120 })}
+                      <label>Source system
+                        <input name="source_system" defaultValue="automation_king" pattern="[a-z][a-z0-9_-]{1,39}" required />
+                      </label>
+                      <button className="primary">Create newsroom connection</button>
+                    </form>
+                    {newIntegrationKey && (
+                      <div className="panel">
+                        <strong>One-time integration key</strong>
+                        <p>Copy this key now into the existing newsroom backend's server-side secret store. Do not send it in chat or commit it.</p>
+                        <input readOnly value={newIntegrationKey} />
+                        <div className="actions">
+                          <button type="button" onClick={() => void navigator.clipboard.writeText(newIntegrationKey)}>Copy key</button>
+                          <button type="button" onClick={() => setNewIntegrationKey("")}>I stored the key</button>
+                        </div>
+                      </div>
+                    )}
+                    <h3>Connected newsroom senders</h3>
+                    {incomingIntegrations.length ? incomingIntegrations.map((item) => (
+                      <article className="record" key={item.id}>
+                        <header>
+                          <strong>{item.name} · {item.source_system}</strong>
+                          <span className="badge">{item.enabled ? "enabled" : "disabled"}</span>
+                        </header>
+                        <div className="kv"><span>Last event</span><code>{item.last_seen_at || "No event received"}</code></div>
+                        {item.enabled && <button type="button" onClick={() => act(async () => {
+                          const { data: { session: activeSession } } = await db!.auth.getSession();
+                          if (!activeSession) throw Error("Sign in again");
+                          const response = await fetch(url + "/functions/v1/integration-admin", {
+                            method: "POST",
+                            headers: { Authorization: "Bearer " + activeSession.access_token, "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "disable", workspace_id: workspace, integration_id: item.id }),
+                          });
+                          const result = await response.json();
+                          if (!response.ok) throw Error(result.error || "Unable to disable integration");
+                        }, "Newsroom integration disabled")}>Disable sender</button>}
+                      </article>
+                    )) : <p>No newsroom sender connected.</p>}
+                    <h3>Recent incoming events</h3>
+                    {incomingEvents.length ? incomingEvents.map((event) => (
+                      <article className="record" key={event.id}>
+                        <header><strong>{event.event_type}</strong><span className="badge">shadow received</span></header>
+                        <div className="kv"><span>Event ID</span><code>{event.external_event_id}</code></div>
+                        <div className="kv"><span>Received</span><code>{event.received_at}</code></div>
+                      </article>
+                    )) : <p>No newsroom events received yet.</p>}
+                  </section>
+                  <section className="panel">
+                    <h2>Website and social delivery</h2>
+                    <p>
+                      The publication-destination and delivery-ledger migrations are present in this feature branch
+                      but are not yet reconciled with the existing live database migration history. Registration,
+                      ownership changes, scheduling, and dispatch are deliberately unavailable here until that
+                      schema audit is complete. Existing newsroom publishing remains unchanged.
                     </p>
                   </section>
                   {list()}
