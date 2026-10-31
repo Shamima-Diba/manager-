@@ -15,7 +15,7 @@ if (publicSite && process.env.VERCEL_ENV === "production") {
 
 const env = { ...process.env };
 if (publicSite && !env.SITE_OUTPUT_DIR) {
-  env.SITE_OUTPUT_DIR = "dist";
+  env.SITE_OUTPUT_DIR = "apps/web/dist";
 }
 const result = spawnSync("yarn", command, {
   stdio: "inherit",
