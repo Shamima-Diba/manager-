@@ -174,24 +174,48 @@ footer{margin-top:54px;padding:24px 20px;text-align:center;border-top:1px solid 
 }
 export async function exportSite() {
   const url = process.env.SUPABASE_URL,
-    key = process.env.SUPABASE_SERVICE_ROLE_KEY,
+    key = process.env.SUPABASE_ANON_KEY,
     origin = process.env.PUBLIC_SITE_ORIGIN;
-  if (!url || !key || !origin) throw Error("Public site not configured");
-  const db = createClient(url, key, { auth: { persistSession: false } });
+  if (!url || !key || !origin)
+    throw Error("Public site requires SUPABASE_URL, SUPABASE_ANON_KEY and PUBLIC_SITE_ORIGIN");
+  // The export RPC is deliberately safe for anon: it exposes only approved public snapshots.
+  // Never use a service-role credential for the public-site build.
+  const db = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const { data, error } = await db.rpc("public_site_data");
   if (error) throw error;
+  if (
+    !data ||
+    !Array.isArray(data.workspaces) ||
+    !Array.isArray(data.posts)
+  ) throw Error("Public site export returned an invalid snapshot contract");
+
   const target = path.resolve(process.env.SITE_OUTPUT_DIR || "site-output");
   const temp = target + ".next";
+  const previous = target + ".previous";
   await rm(temp, { recursive: true, force: true });
   const result = await buildSite(data, temp, origin);
-  await rm(target + ".previous", { recursive: true, force: true });
+  await rm(previous, { recursive: true, force: true });
+  let hadPrevious = false;
   try {
-    await rename(target, target + ".previous");
+    await rename(target, previous);
+    hadPrevious = true;
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
+      await rm(temp, { recursive: true, force: true });
+      throw e;
+    }
   }
-  await rename(temp, target);
-  await rm(target + ".previous", { recursive: true, force: true });
+  try {
+    await rename(temp, target);
+  } catch (e) {
+    // Restore the last good site if promotion fails; never leave the live output absent.
+    if (hadPrevious) await rename(previous, target);
+    await rm(temp, { recursive: true, force: true });
+    throw e;
+  }
+  await rm(previous, { recursive: true, force: true });
   return result;
 }
 if (
